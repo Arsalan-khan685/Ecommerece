@@ -1,0 +1,74 @@
+﻿@page "/login"
+@using Shop.Model.CustomModels;
+@using Shop.Admin.Services;
+@inject IAdminPanelService adminPanelServices;
+@inject NavigationManager navmanager;
+@inject ProtectedSessionStorage sessionStorage;
+
+<div class="login">
+    <div class="box">
+        <br />
+        <h1>Admin Panel</h1>
+        @if (loginModel != null)
+        {
+            <EditForm Model="@loginModel" OnValidSubmit="@Login_Click">
+                <DataAnnotationsValidator />
+              
+            <div class="form-group row col-sm-8">
+                <label for="email" class="col-sm-2 col-form-label" >Email </label>
+                <div class="col-sm-6">
+                    <InputText type="Email" name="email" id="email" class="form-control" @bind-Value="loginModel.EmailId" />
+                    <ValidationMessage For="@(() => loginModel.EmailId)" />
+                </div>
+            </div>
+                    
+            <div class="form-group row col-sm-8">
+                <label class="col-sm-2 col-form-label">Password </label>
+                <div class="col-sm-6">
+                    <InputText type="Password" name="password" class="form-control" @bind-Value="loginModel.Password" />
+                    <ValidationMessage For="@(() => loginModel.Password)" />
+                 </div>
+             </div>
+            <div class="form-group ">
+                <div class="col-sm-2 text-right">
+                    <input type="submit" class="btn btn-primary " value="Login" />
+                </div>
+            </div>
+
+</EditForm>
+        }
+                <p style="color:#e52e50">
+                    <h4>@alertMessage</h4>
+                </p>
+    </div>
+ </div>
+
+@code {
+    [CascadingParameter]
+    public EventCallback notify { get; set; }
+
+    public LogInModel loginModel { get; set; }
+    public string alertMessage { get; set; }
+    protected override void OnInitialized()
+    {
+        loginModel = new LogInModel();
+        base.OnInitialized();
+    }
+    private async Task Login_Click()
+    {
+        var responce = await adminPanelServices.AdminLogin(loginModel);
+        if (responce.Status == true)
+        {
+            var user_responce = responce.Message.Split("|");
+            await sessionStorage.SetAsync("adminKey", user_responce[0]);
+            await sessionStorage.SetAsync("adminName", user_responce[1]);
+            await sessionStorage.SetAsync("adminEmail", user_responce[2]);
+            await notify.InvokeAsync();
+            navmanager.NavigateTo("/");
+        }
+        else
+        {
+            alertMessage = responce.Message;
+        }
+    }
+}

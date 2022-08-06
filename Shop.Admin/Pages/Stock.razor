@@ -1,0 +1,185 @@
+﻿@page "/stock"
+@using Shop.Model.CustomModels;
+@using Shop.Admin.Services;
+@inject IAdminPanelService adminPanelService
+
+<style>
+    .modal{
+        display:block !important;
+    }
+</style>
+<div class="card">
+    <h4 class="card-header">Stock</h4>
+    <div class="card-body">
+        @{ var sno = 1;}
+        @if (stockList == null)
+        {
+            <p><em>Loading....</em></p>
+        }
+        else
+        {
+            <table class="table table-bordered table-striped">
+                <thead>
+                    <tr>
+                        <th>S.NO </th>
+                        <th>Product Name</th>
+                        <th>Stock</th>
+                        <th>Category Name</th>
+                        <th>Add Stock</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var temp in stockList)
+                    {
+                        <tr>
+                            <td>@sno</td>
+                            <td>@temp.ProductName</td>
+                            <td>@temp.Stock</td>
+                            <td>@temp.Category_Name</td>
+                            <td>
+                                <input type="button" class="btn btn-primary" value="Add stock" @onclick="() => OnRowEdit(temp)" />
+                            </td>
+                        </tr>
+                        sno++;
+                    }
+
+                </tbody>
+            </table>
+        }
+
+    </div>
+</div>
+
+@if (showEditPopup == true)
+{
+
+    <div class="modal">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Add product Stock</h5>
+                    <span aria-hidden="true" class="close" @onclick="ToggleEditPopup">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <EditForm Model="@stockToUpdate" OnValidSubmit="UpdateStock">
+                        <DataAnnotationsValidator />
+                        <div class="form-row">
+                            <div class="form-group col-6">
+                                <label>Product Name: </label>
+                                <label>@stockToUpdate.ProductName</label>
+                            </div>
+                            <div class="form-group col-6">
+                                <label>Available stock: </label>
+                                <label>@stockToUpdate.Stock</label>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group col-6">
+                                <label>New Stock: </label>
+                                <InputNumber @bind-Value="stockToUpdate.NewStock" class="form-control" />
+                                <ValidationMessage For="@(() =>stockToUpdate.NewStock)" />
+                            </div>
+                            <div class="form-group col-6">
+                                <label>Total Stock: </label>
+                                <br />
+                                <label>@(stockToUpdate.Stock + stockToUpdate.NewStock)</label>
+                            </div>
+                        </div>
+                    </EditForm>
+                </div>
+                <div class="modal-footer">
+                    <input type="button" class="btn btn-primary" value="Update Stock" @onclick="UpdateStock" />
+                    <input type="button" class="btn btn-primary" value="cancel" @onclick="ToggleEditPopup" />
+
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@if (successPopup == true)
+{
+        <div class="modal">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Succes Popup</h5>
+                        <span aria-hidden="true" class="close" @onclick="ToggleSuccessPopup">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        @Message
+                    </div>
+                    <div class="modal-footer">
+                        <input type="button" class="btn btn-primary" value="Close" @onclick="ToggleSuccessPopup" />
+                    </div>
+                </div>
+            </div>
+        </div>
+}
+@code {
+    [CascadingParameter]
+    public EventCallback notify { get; set; }
+    List<StockModel> stockList { get; set; }
+    public StockModel stockModel { get; set; }
+    List<CategoryModel> categoryList { get; set; }
+    List<ProductModel> productList { get; set; }
+    public bool showEditPopup { get; set; }
+    public bool successPopup { get; set; }
+    public StockModel stockToUpdate { get; set; }
+    public string Message = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetCategories();
+        await GetProducts();
+        await GetStock();
+    }
+    protected async Task GetCategories()
+    {
+        categoryList = await adminPanelService.GetCategories();
+    }
+    protected async Task GetProducts()
+    {
+        productList = await adminPanelService.GetProducts();
+    }
+    protected async Task GetStock()
+    {
+        stockList = await adminPanelService.GetStock();
+    }
+    public void ToggleEditPopup()
+    {
+        showEditPopup = showEditPopup == true ? false : true;
+    }
+    public void ToggleSuccessPopup()
+    {
+        successPopup = successPopup == true ? false : true;
+    }
+    public void OnRowEdit(StockModel _stock)
+    {
+        stockToUpdate = _stock;
+        ToggleEditPopup();
+    }
+    private async Task UpdateStock()
+    {
+        bool flag = await adminPanelService.UpdateStock(stockToUpdate);
+        ToggleEditPopup();
+        if (flag)
+        {
+            Message = "Stock Updated Succesfully!.";
+        }
+        else
+        {
+            Message = "Cant Updated";
+        }
+        ToggleSuccessPopup();
+        stockToUpdate = new StockModel();
+        await GetStock();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await notify.InvokeAsync();
+        }
+    }
+}

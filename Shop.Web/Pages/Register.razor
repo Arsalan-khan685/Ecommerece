@@ -1,0 +1,116 @@
+﻿@page "/Register"
+@using Shop.Web.Services;
+@using Shop.Model.CustomModels;
+@inject IUserPanelService userPanelService
+@inject ProtectedSessionStorage sessionStorage;
+@inject NavigationManager navManager;
+
+<style>
+    .loginbox{
+        text-align:center;
+        width:100%;
+        margin:20px 0px;
+    }
+    h1{
+        padding-top:10px;
+        font-size:1.5em;
+        color:black;
+    }
+    .box{
+        background:white;
+        width:300px;
+        border-radius:6px;
+        border:solid black;
+        margin : 0px auto ;
+        padding:0px 0px 20px 0px;
+    }
+    .text{
+        background:#ffffff;
+        padding:8px;
+        width:250px;
+        margin-top:10px;
+        border-radius:5px;
+        font-size:1em;
+    }
+    .btn{
+        margin-top:20px;
+        width:100px;
+        padding-top:5px;
+        padding-bottom:5px;
+    }
+</style>
+
+ <div style="min-height:400px;">
+     <div class="loginbox">
+         <div class="box">
+             <h1>Register</h1>
+             <EditForm Model="@registerModel" OnValidSubmit="Register_Click">
+                 <DataAnnotationsValidator />
+                 <InputText type="text" name="Name" placeholder="Name" class="text" @bind-Value="registerModel.Name" />
+                 <ValidationMessage For="@(()=>registerModel.Name)" />
+                 <InputText type="email" name="Email" placeholder="Email" class="text" @bind-Value="registerModel.EmailID" />
+                 <ValidationMessage For="@(()=>registerModel.EmailID)" />
+                 <InputText type="text" name="Mobile No" placeholder="Mobile No" class="text" @bind-Value="registerModel.MobileNo" />
+                 <ValidationMessage For="@(()=>registerModel.MobileNo)" />
+                 <InputText type="password" name="Password" placeholder="Password" class="text" @bind-Value="registerModel.Password" />
+                 <ValidationMessage For="@(()=>registerModel.Password)" />
+                 <input type="submit" class="btn btn-primary" value="Register" />
+                 <a href="login"><div class="btn btn-success">Login</div></a>
+             </EditForm>
+         </div>
+         <div>
+             <br /><br />
+             <p style="color:#e52e50;">
+                 <h4>@alertMessage</h4>
+             </p>
+         </div>
+     </div>
+
+ </div>
+
+
+
+@code {
+    public RegisterModel registerModel { get; set; }
+    [CascadingParameter]
+    public EventCallback notify { get; set; }
+    public string alertMessage { get; set; }
+
+    protected override Task OnInitializedAsync()
+    {
+        registerModel = new RegisterModel();
+        return base.OnInitializedAsync();
+    }
+
+    private async Task Register_Click()
+    {
+        var responce = await userPanelService.RegisterUser(registerModel);
+        if (responce.Status)
+        {
+            var user_responce = responce.Message.Split("|");
+            await sessionStorage.SetAsync("userKey", user_responce[0]);
+            await sessionStorage.SetAsync("userName", user_responce[1]);
+            await sessionStorage.SetAsync("userEmail", user_responce[2]);
+            await notify.InvokeAsync();
+            navManager.NavigateTo("/");
+        }
+        else
+        {
+            alertMessage = responce.Message;
+        }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            var login_session = await userPanelService.IsUserLoggedIn();
+            if (login_session)
+            {
+                navManager.NavigateTo("/");
+            }
+           
+
+        }
+    }
+}
